@@ -1,6 +1,11 @@
-﻿(function() {
+import * as DomEvent from "leaflet/src/dom/DomEvent";
+import * as Util from "leaflet/src/core/Util";
+import {any3d} from "leaflet/src/core/Browser";
+import {setTransform, addClass, setPosition} from "leaflet/src/dom/DomUtil";
+import {trim, splitWords, add, bind} from "leaflet/src/core/Util";
 
-'use strict';
+
+(function() {
 
 var isRingBbox = function (ring, bbox) {
     if (ring.length !== 4) {
@@ -17,10 +22,9 @@ var isRingBbox = function (ring, bbox) {
 
         sumX += ring[p].x;
         sumY += ring[p].y;
-        
+
         //bins[Number(ring[p].x === bbox.min.x) + 2 * Number(ring[p].y === bbox.min.y)] = 1;
     }
-
     //check that we have all 4 vertex of bbox in our geometry
     return sumX === 2*(bbox.min.x + bbox.max.x) && sumY === 2*(bbox.min.y + bbox.max.y);
 };
@@ -53,18 +57,18 @@ var ExtendMethods = {
             }
             res.push(mercComponent);
         }
-        
+
         return res;
     },
-    
+
     //lazy calculation of layer's boundary in map's projection. Bounding box is also calculated
     _getOriginalMercBoundary: function () {
         if (this._mercBoundary) {
             return this._mercBoundary;
         }
 
-        var compomentBbox, c;
-            
+        var compomentBbox;
+
         if (L.Util.isArray(this.options.boundary)) { //Depricated: just array of coordinates
             this._mercBoundary = this._toMercGeometry(this.options.boundary);
         } else { //GeoJSON
@@ -84,9 +88,9 @@ var ExtendMethods = {
             }.bind(this);
             processGeoJSONObject(this.options.boundary);
         }
-        
+
         this._mercBbox = new L.Bounds();
-        for (c = 0; c < this._mercBoundary.length; c++) {
+        for (var c = 0; c < this._mercBoundary.length; c++) {
             compomentBbox = new L.Bounds(this._mercBoundary[c][0]);
             this._mercBbox.extend(compomentBbox.min);
             this._mercBbox.extend(compomentBbox.max);
@@ -101,7 +105,7 @@ var ExtendMethods = {
             clippedExternalRing,
             clippedHoleRing,
             iC, iR;
-            
+
         for (iC = 0; iC < geom.length; iC++) {
             clippedComponent = [];
             clippedExternalRing = L.PolyUtil.clipPolygon(geom[iC][0], bounds);
@@ -119,7 +123,7 @@ var ExtendMethods = {
             }
             clippedGeom.push(clippedComponent);
         }
-        
+
         if (clippedGeom.length === 0) { //we are outside of all multipolygon components
             return {isOut: true};
         }
@@ -148,15 +152,14 @@ var ExtendMethods = {
 
     // Calculates intersection of original boundary geometry and tile boundary.
     // Uses quadtree as cache to speed-up intersection.
-    // Return 
-    //   {isOut: true} if no intersection,  
+    // Return
+    //   {isOut: true} if no intersection,
     //   {isIn: true} if tile is fully inside layer's boundary
     //   {geometry: <LatLng[][][]>} otherwise
     _getTileGeometry: function (x, y, z, skipIntersectionCheck) {
         if ( !this.options.boundary) {
             return {isIn: true};
         }
-    
         var cacheID = x + ":" + y + ":" + z,
             zCoeff = Math.pow(2, z),
             parentState,
@@ -185,7 +188,7 @@ var ExtendMethods = {
         if (parentState.isOut || parentState.isIn) {
             return parentState;
         }
-        
+
         cache[cacheID] = this._getClippedGeometry(parentState.geometry, tileBbox);
         return cache[cacheID];
     },
@@ -195,6 +198,7 @@ var ExtendMethods = {
             state = this._getTileGeometry(tilePoint.x, tilePoint.y, zoom);
 
         if (state.isOut) {
+            addClass(canvas, 'invisible leaflet-tile');
             callback();
             return;
         }
@@ -206,7 +210,7 @@ var ExtendMethods = {
             ctx = canvas.getContext('2d'),
             imageObj = new Image(),
             _this = this;
-            
+
         var setPattern = function () {
             var c, r, p,
                 pattern,
@@ -238,32 +242,32 @@ var ExtendMethods = {
             ctx.fill();
             callback();
         };
-        
+
         if (this.options.crossOrigin) {
             imageObj.crossOrigin = '';
         }
-        
+
         imageObj.onload = function () {
             //TODO: implement correct image loading cancelation
             canvas.complete = true; //HACK: emulate HTMLImageElement property to make happy L.TileLayer
             setTimeout(setPattern, 0); //IE9 bug - black tiles appear randomly if call setPattern() without timeout
         }
-        
+
         imageObj.src = url;
     },
-    
+
     onAdd: function(map) {
         (L.TileLayer.Canvas || L.TileLayer).prototype.onAdd.call(this, map);
-        
+
         if (this.options.trackAttribution) {
             map.on('moveend', this._updateAttribution, this);
             this._updateAttribution();
         }
     },
-    
+
     onRemove: function(map) {
         (L.TileLayer.Canvas || L.TileLayer).prototype.onRemove.call(this, map);
-        
+
         if (this.options.trackAttribution) {
             map.off('moveend', this._updateAttribution, this);
             if (!this._attributionRemoved) {
@@ -272,19 +276,53 @@ var ExtendMethods = {
             }
         }
     },
-    
+
     _updateAttribution: function() {
         var geom = this._getOriginalMercBoundary(),
             mapBounds = this._map.getBounds(),
             mercBounds = L.bounds(this._map.project(mapBounds.getSouthWest(), 0), this._map.project(mapBounds.getNorthEast(), 0)),
             state = this._getClippedGeometry(geom, mercBounds);
-        
+
         if (this._attributionRemoved !== !!state.isOut) {
             var attribution = L.TileLayer.BoundaryCanvas.prototype.getAttribution.call(this);
             this._map.attributionControl[state.isOut ? 'removeAttribution' : 'addAttribution'](attribution);
             this._attributionRemoved = !!state.isOut;
         }
-    }
+    },
+
+    _addTile: function (coords, container) {
+		var tilePos = this._getTilePos(coords),
+		    key = this._tileCoordsToKey(coords);
+
+		var tile = this.createTile(this._wrapCoords(coords), bind(this._tileReady, this, coords));
+		this._initTile(tile);
+
+		// if createTile is defined with a second argument ("done" callback),
+		// we know that tile is async and will be ready later; otherwise
+		if (this.createTile.length < 2) {
+			// mark tile as ready, but delay one frame for opacity animation to happen
+			requestAnimFrame(bind(this._tileReady, this, coords, null, tile));
+		}
+
+		setPosition(tile, tilePos);
+
+        if (!tile.classList.contains('invisible')) {
+            // save tile in cache
+            this._tiles[key] = {
+                el: tile,
+                coords: coords,
+                current: true
+            };
+
+            container.appendChild(tile);
+            // @event tileloadstart: TileEvent
+            // Fired when a tile is requested and starts loading.
+            this.fire('tileloadstart', {
+                tile: tile,
+                coords: coords
+            });
+        }
+	}
 };
 
 if (L.version >= '0.8') {
@@ -304,7 +342,7 @@ if (L.version >= '0.8') {
             this._boundaryCache = {}; //cache index "x:y:z"
             this._mercBoundary = null;
             this._mercBbox = null;
-            
+
             if (this.options.trackAttribution) {
                 this._attributionRemoved = true;
                 this.getAttribution = null;
@@ -313,9 +351,9 @@ if (L.version >= '0.8') {
         createTile: function(coords, done){
             var tile = document.createElement('canvas'),
                 url = this.getTileUrl(coords);
+
             tile.width = tile.height = this.options.tileSize;
             this._drawTileInternal(tile, coords, url, L.bind(done, null, null, tile));
-
             return tile;
         }
     })
@@ -338,13 +376,13 @@ if (L.version >= '0.8') {
             this._boundaryCache = {}; //cache index "x:y:z"
             this._mercBoundary = null;
             this._mercBbox = null;
-            
+
             if (this.options.trackAttribution) {
                 this._attributionRemoved = true;
                 this.getAttribution = null;
             }
         },
-        
+
         drawTile: function(canvas, tilePoint) {
             var adjustedTilePoint = L.extend({}, tilePoint),
                 url;
@@ -366,7 +404,13 @@ L.TileLayer.boundaryCanvas = function (url, options) {
 };
 
 L.TileLayer.BoundaryCanvas.createFromLayer = function (layer, options) {
-    return new L.TileLayer.BoundaryCanvas(layer._url, L.extend({}, layer.options, options));
+    if(layer instanceof L.TileLayer){
+        return new L.TileLayer.BoundaryCanvas(layer._url, L.extend({}, layer.options, options));
+    }
+
+    console.warn('Your tileLayer doesn\' instanceof L.TileLayer');
+    return layer;
 };
 
 })();
+
