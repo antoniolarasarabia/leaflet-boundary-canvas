@@ -1,4 +1,4 @@
-import * as DomEvent from "leaflet/src/dom/DomEvent";
+﻿import * as DomEvent from "leaflet/src/dom/DomEvent";
 import * as Util from "leaflet/src/core/Util";
 import {any3d} from "leaflet/src/core/Browser";
 import {setTransform, addClass, setPosition} from "leaflet/src/dom/DomUtil";
@@ -413,4 +413,3 @@ L.TileLayer.BoundaryCanvas.createFromLayer = function (layer, options) {
 };
 
 })();
-
