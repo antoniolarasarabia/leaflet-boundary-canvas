@@ -1,24 +1,25 @@
 {
   "_from": "git+https://github.com/antoniolarasarabia/leaflet-boundary-canvas.git",
-  "_id": "googlemutant-mask@1.0.0",
+  "_id": "leaflet-boundary-canvas@1.0.0",
   "_inBundle": false,
   "_integrity": "",
   "_location": "/leaflet-boundary-canvas",
   "_phantomChildren": {},
   "_requested": {
     "type": "git",
-    "raw": "leaflet-boundary-canvas@https://github.com/antoniolarasarabia/leaflet-boundary-canvas.git",
+    "raw": "leaflet-boundary-canvas@git+https://github.com/antoniolarasarabia/leaflet-boundary-canvas.git",
     "name": "leaflet-boundary-canvas",
     "escapedName": "leaflet-boundary-canvas",
     "rawSpec": "git+https://github.com/antoniolarasarabia/leaflet-boundary-canvas.git",
     "saveSpec": "git+https://github.com/antoniolarasarabia/leaflet-boundary-canvas.git",
-    "fetchSpec": "https://github.com/antoniolarasarabia/leaflet-boundary-canvas.git",
+    "fetchSpec": "git+https://github.com/antoniolarasarabia/leaflet-boundary-canvas.git",
     "gitCommittish": null
   },
   "_requiredBy": [
     "/"
   ],
-  "_spec": "leaflet-boundary-canvas@https://github.com/antoniolarasarabia/leaflet-boundary-canvas.git",
+  "_resolved": "",
+  "_spec": "leaflet-boundary-canvas@git+git+https://github.com/antoniolarasarabia/leaflet-boundary-canvas.git",
   "_where": "/home/antonio/Projects/vandersat/FrontSat",
   "author": {
     "name": "Antonio"
@@ -29,7 +30,7 @@
   "bundleDependencies": false,
   "deprecated": false,
   "description": "A Leaflet boundary canvas",
-  "homepage": "https://github.com/antoniolarasarabia/leaflet-boundary-canvas",
+  "homepage": "https://github.com/antoniolarasarabia/leaflet-boundary-canvas#readme",
   "keywords": [
     "leaflet"
   ],
@@ -37,7 +38,7 @@
   "main": "src/BoundaryCanvas.js",
   "name": "leaflet-boundary-canvas",
   "peerDependencies": {
-    "leaflet": "^1.0.0",
+    "leaflet": "^1.0.0"
   },
   "repository": {
     "type": "git",
